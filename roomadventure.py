@@ -54,7 +54,7 @@ class Game(Frame):
     STATUS_DEFAULT = "I don't understand. Try <verb> <noun>. Valid verbs are go, look, and take."
     STATUS_DEAD = "You are dead."
     STATUS_BAD_EXIT = "Invalid exit."
-    STATUS_ROOM_CHANGING = "Room changed."
+    STATUS_ROOM_CHANGE = "Room changed."
     STATUS_GRABBED = "Item grabbed."
     STATUS_BAD_GRABBABLE = "I can't grab that."
     STATUS_BAD_ITEM = "I don't see that."
@@ -69,10 +69,10 @@ class Game(Frame):
 
     def setup_game(self):
         # create rooms
-        r1 = Room("Room 1", "room1.gif")
-        r2 = Room("Room 2", "room2.gif")
-        r3 = Room("Room 3", "room3.gif")
-        r4 = Room("Room 4", "room4.gif")
+        r1 = Room("Room 1", "images/room1.gif")
+        r2 = Room("Room 2", "images/room2.gif")
+        r3 = Room("Room 3", "images/room3.gif")
+        r4 = Room("Room 4", "images/room4.gif")
 
         # add exits to each room
         r1.add_exit("east", r2)
@@ -104,32 +104,127 @@ class Game(Frame):
 
         # add grabbables to the rooms
 
+        r1.add_grabbables("key")
+
+        r2.add_grabbables("fire")
+
+        r3.add_grabbables("doug")
+
+        r4.add_grabbables("butter")
+
         # set the current room to the starting room
+        self.current_room = r1
 
     def setup_gui(self):
-        pass
+        # input element at the bottom of the screen
+        self.player_input = Entry(self, bg='white', fg='black')
+        self.player_input.bind("<Return>", self.process)
+        self.player_input.pack(side=BOTTOM, fill=X)
+        self.player_input.focus()
+
+        # the image container and default image
+        img = None # represents the actual image
+        self.image_container = Label(self, width=Game.WIDTH // 2, image=img)
+        self.image_container.image = img # ensuring image persistence after function ends
+        self.image_container.pack(side=LEFT, fill=Y)
+        self.image_container.pack_propagate(False) # prevent the image from modifying the size of the container it is in
+
+        # container for the game text
+        text_container = Frame(self, width=Game.WIDTH // 2)
+        self.text = Text(text_container, bg="lightgrey", fg="black", state=DISABLED)
+        self.text.pack(fill=Y, expand=1)
+        text_container.pack(side=RIGHT, fill=Y)
+        text_container.pack_propagate(False)
 
     def set_room_image(self):
-        pass
+        if self.current_room == None:
+            img = PhotoImage(file="images/skull.gif")
+        else:
+            img = PhotoImage(file=self.current_room.image)
 
-    def set_status(self):
-        pass
+        self.image_container.config(image=img)
+        self.image_container.image = img
+
+    def set_status(self, status):
+        self.text.config(state=NORMAL) # make it editable
+        self.text.delete(1.0, END) # yes 1.0 for text, 0 for entry elements
+
+        if self.current_room == None:
+            self.text.insert(END, Game.STATUS_DEAD)
+        else:
+            content = f"{self.current_room}\nYou are carrying: {self.inventory}\n\n{status}"
+            self.text.insert(END, content)
+
+        self.text.config(state=DISABLED) # no longer editable
 
     def clear_entry(self):
-        pass
+        self.player_input.delete(0, END)
 
-    def handle_go(self):
-        pass
+    def handle_go(self, destination):
+        status = Game.STATUS_BAD_EXIT
 
-    def handle_look(self):
-        pass
+        if destination in self.current_room.exits:
+            self.current_room =  self.current_room.exits[destination]
+            status = Game.STATUS_ROOM_CHANGE
 
-    def handle_take(self):
-        pass
+        self.set_status(status)
+        self.set_room_image()
+
+
+    def handle_look(self, item):
+        status = Game.STATUS_BAD_ITEM
+
+        if item in self.current_room.items:
+            status = self.current_room.items[item]
+
+        self.set_status(status)
+
+    def handle_take(self, grabbable):
+        status = Game.STATUS_BAD_GRABBABLE
+
+        if grabbable in self.current_room.grabbables:
+            self.inventory.append(grabbable)
+            self.current_room.del_grabbables(grabbable)
+            status = Game.STATUS_GRABBED
+
+        self.set_status(status)
 
     def play(self):
-        pass
+        self.setup_game()
+        self.setup_gui()
+        self.set_room_image()
+        self.set_status("")
 
     def process(self, event):
-        pass
+        action = self.player_input.get()
+        action = action.lower()
 
+        if action in Game.EXIT_ACTIONS:
+            exit()
+
+        if self.current_room == None:
+            self.clear_entry()
+            return
+        
+        words = action.split()
+
+        if len(words) != 2:
+            self.set_status(Game.STATUS_DEFAULT)
+            return
+        
+        self.clear_entry()
+
+        verb = words[0]
+        noun = words[1]
+
+        match verb:
+            case "go": self.handle_go(destination=noun)
+            case "look": self.handle_look(item=noun)
+            case "take": self.handle_take(grabbable=noun)
+
+########################### MAIN ###########################################
+window = Tk()
+window.title("Room Adventure... REVOLUTIONS")
+game = Game(window)
+game.play()
+window.mainloop()
