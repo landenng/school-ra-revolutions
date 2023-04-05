@@ -93,7 +93,7 @@ class Game(Frame):
         r1.add_item("bigger_chair", "More wicker and more legs")
 
         r2.add_item("fireplace", "hot. grab some fire and bring it.")
-        r2.add_exit("more_chair", "even more wicker")
+        r2.add_item("more_chair", "even more wicker")
 
         r3.add_item("desk", "it is made of wicker also. a wicker desk.")
         r3.add_item("dimsdale_dimmadome", "owned by doug dimmadome, \
